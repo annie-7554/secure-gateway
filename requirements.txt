@@ -1,2 +1,6 @@
 flask==2.3.4
 gunicorn==21.2.0
+
+# Demo vulnerable deps
+flask==1.0.2
+requests==2.4.0
