@@ -11,10 +11,34 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/secure-gateway:${{ github.sha }} .
-      - name: Scan with Trivy
+      - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy image --format json --output trivy-report.json ghcr.io/${{ github.repository }}/secure-gateway:${{ github.sha }} || true
+      - name: Scan with Trivy (SARIF)
+        id: trivy-scan
+        run: |
+          set -o pipefail
+          mkdir -p trivy-scan
+          # produce SARIF output (still exits non-zero on findings)
+          trivy image --format sarif --output trivy-scan/trivy-report.sarif ghcr.io/${{ github.repository }}/secure-gateway:${{ github.sha }} || rc=$?
+          echo "TRIVY_RC=${rc:-0}" >> $GITHUB_ENV
+      - name: Upload Trivy SARIF to GitHub code scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-scan/trivy-report.sarif
+        if: always()
+      - name: Upload trivy SARIF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy-scan/trivy-report.sarif
+        if: always()
+      - name: Fail if Trivy found critical/high issues
+        run: |
+          if [ "${TRIVY_RC}" != "0" ]; then
+            echo "Trivy detected vulnerabilities (exit ${TRIVY_RC}). Failing job."
+            exit ${TRIVY_RC}
+          fi
       - name: Generate SBOM (syft)
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
