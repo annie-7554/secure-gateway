@@ -18,6 +18,18 @@ spec:
           image: ghcr.io/annie-7554/secure-gateway:latest
           ports:
             - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
