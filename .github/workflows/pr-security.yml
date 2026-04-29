@@ -1,0 +1,36 @@
+name: PR Security Gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - name: Install semgrep
+        run: pip install semgrep
+      - name: Run semgrep
+        run: semgrep --config 'p/owasp-top-ten' || true
+
+  trufflehog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install trufflehog
+        run: pip install trufflehog
+      - name: Run trufflehog
+        run: trufflehog filesystem --entropy=True --max_depth=3 . || true
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run OWASP Dependency-Check
+        uses: docker://owasp/dependency-check:latest
+        with:
+          args: --scan . --format JSON --out .

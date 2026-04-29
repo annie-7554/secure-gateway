@@ -1,0 +1,27 @@
+name: Deploy to Kind
+on:
+  workflow_dispatch:
+  repository_dispatch:
+  push:
+    tags: [ 'prod-*' ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for approval
+        uses: peter-evans/wait-for-approval@v2
+        with:
+          reviewers: 'team-lead'
+          timeout: 2h
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml

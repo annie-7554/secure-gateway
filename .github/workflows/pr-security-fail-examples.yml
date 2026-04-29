@@ -1,0 +1,14 @@
+name: PR Security Examples
+on:
+  workflow_dispatch:
+
+jobs:
+  example_sql_injection:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "SQL injection example detected by semgrep" && exit 1
+
+  example_secret:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hardcoded secret detected by trufflehog" && exit 1
