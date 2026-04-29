@@ -1,0 +1,56 @@
+rules:
+  - id: py-sql-injection
+    languages: [python]
+    message: "Possible SQL injection: use parameterized queries instead of string formatting."
+    severity: ERROR
+    patterns:
+      - pattern: $DB.execute($QUERY)
+      - pattern-not: $DB.execute($QUERY, ...)
+
+  - id: py-eval-exec
+    languages: [python]
+    message: "Use of eval/exec is dangerous and can lead to remote code execution."
+    severity: ERROR
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: exec($X)
+
+  - id: py-subprocess-shell
+    languages: [python]
+    message: "Avoid subprocess with shell=True; prefer list args to prevent shell injection."
+    severity: ERROR
+    pattern: subprocess.*(run|call|Popen)($ARGS, shell=True)
+
+  - id: py-weak-hash
+    languages: [python]
+    message: "Usage of weak hash algorithms (MD5/SHA1). Use SHA256 or stronger."
+    severity: WARNING
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+
+  - id: py-pickle-untrusted
+    languages: [python]
+    message: "Untrusted deserialization via pickle.load or pickle.loads is unsafe."
+    severity: ERROR
+    pattern-either:
+      - pattern: pickle.load($X)
+      - pattern: pickle.loads($X)
+
+  - id: hardcoded-secrets
+    languages: [python, yaml, dotenv]
+    message: "Possible hardcoded secret or API key detected (entropy or well-known prefixes)."
+    severity: ERROR
+    regex: '(AKIA|A3T|AIza|SECRET|PRIVATE_KEY|DB_PASSWORD|API_KEY)\s*=\s*.+'
+
+  - id: js-eval
+    languages: [javascript, typescript]
+    message: "Avoid use of eval in JavaScript/TypeScript."
+    severity: ERROR
+    pattern: eval($X)
+
+  - id: risky-templates
+    languages: [python]
+    message: "Passing raw user input into template rendering can lead to XSS; sanitize or escape before rendering."
+    severity: WARNING
+    pattern: render_template($TEMPLATE, **$ARGS)
