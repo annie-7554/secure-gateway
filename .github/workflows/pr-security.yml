@@ -8,6 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -21,6 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -57,8 +67,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install trufflehog
         run: pip install trufflehog
-      - name: Run trufflehog
-        run: trufflehog filesystem --entropy=True --max_depth=3 . || true
+      - name: Run trufflehog (git history)
+        run: |
+          trufflehog git --json . > trufflehog.json || rc=$?
+          echo "TRUFFLE_RC=${rc:-0}" >> $GITHUB_ENV
+      - name: Upload trufflehog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trufflehog-results
+          path: trufflehog.json
+        if: always()
+      - name: Fail if trufflehog found findings
+        run: |
+          if [ -s trufflehog.json ] && grep -q '"reason"' trufflehog.json; then
+            echo "TruffleHog found potential secrets. Failing job."
+            exit 1
+          fi
 
   dependency-check:
     runs-on: ubuntu-latest

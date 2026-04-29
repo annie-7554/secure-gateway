@@ -38,10 +38,10 @@ rules:
       - pattern: pickle.loads($X)
 
   - id: hardcoded-secrets
-    languages: [python, yaml, dotenv]
+    languages: [python, yaml]
     message: "Possible hardcoded secret or API key detected (entropy or well-known prefixes)."
     severity: ERROR
-    regex: '(AKIA|A3T|AIza|SECRET|PRIVATE_KEY|DB_PASSWORD|API_KEY)\s*=\s*.+'
+    pattern-regex: '(AKIA|A3T|AIza|SECRET|PRIVATE_KEY|DB_PASSWORD|API_KEY)\\s*[:=]\\s*[^\\n\\r\\s]+'
 
   - id: js-eval
     languages: [javascript, typescript]
