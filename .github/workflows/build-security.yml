@@ -1,5 +1,6 @@
 name: Build Security Gate
 permissions:
+  contents: read
   security-events: write
 on:
   push:
