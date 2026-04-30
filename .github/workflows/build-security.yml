@@ -1,4 +1,6 @@
 name: Build Security Gate
+permissions:
+  security-events: write
 on:
   push:
     branches: [ main ]
