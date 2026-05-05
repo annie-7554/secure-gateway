@@ -1,13 +1,19 @@
+# Service: Expose pod to cluster and external traffic
+# SECURITY: Only needed ports exposed (8000 for HTTP)
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: secure-gateway
-  namespace: production
+  name: devsecops-app
+  namespace: devsecops-app
+  labels:
+    app: devsecops-app
 spec:
+  type: LoadBalancer  # Can be changed to ClusterIP/NodePort for more restricted access
   selector:
-    app: secure-gateway
+    app: devsecops-app
   ports:
-    - protocol: TCP
+    - name: http
       port: 80
       targetPort: 8000
-  type: ClusterIP
+      protocol: TCP

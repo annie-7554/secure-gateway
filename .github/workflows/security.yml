@@ -1,0 +1,87 @@
+name: Gate 1 - Code Security
+
+# Trigger on PR creation/update - catch issues BEFORE merge
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Parallel security scans for speed
+  semgrep-sast:
+    runs-on: ubuntu-latest
+    name: SAST Analysis
+    steps:
+      - uses: actions/checkout@v4
+
+      # Semgrep: Catch vulnerable code patterns (SQL injection, weak crypto, etc.)
+      # Why: Shift-left security - find issues in code review, not production
+      - name: Run Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/cwe-top-25
+          generateSarif: true
+
+      # Upload results for GitHub Security dashboard visibility
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  secrets-scanning:
+    runs-on: ubuntu-latest
+    name: Secret Scanning
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed to detect ALL secrets
+
+      # TruffleHog: Scan for accidentally committed secrets (API keys, tokens, etc.)
+      # Why: Prevent credential exposure in supply chain
+      - name: Run TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  dependency-scanning:
+    runs-on: ubuntu-latest
+    name: Dependency Vulnerability Scan
+    steps:
+      - uses: actions/checkout@v4
+
+      # Snyk: Identify known vulnerable dependencies
+      # Why: Supply chain security - dependencies are entry point for attacks
+      - name: Run Snyk dependency scan
+        uses: snyk/actions/python-3.11@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --fail-on=all
+
+  # Status check: All gates must pass
+  gate-1-status:
+    name: Gate 1 - Code Security Status
+    runs-on: ubuntu-latest
+    needs: [semgrep-sast, secrets-scanning, dependency-scanning]
+    if: always()
+    steps:
+      - name: Check all security scans passed
+        run: |
+          if [ "${{ needs.semgrep-sast.result }}" != "success" ] || \
+             [ "${{ needs.secrets-scanning.result }}" != "success" ] || \
+             [ "${{ needs.dependency-scanning.result }}" != "success" ]; then
+            echo "❌ Code security gate FAILED"
+            echo "Fix issues before merging:"
+            echo "  - SAST: Check semgrep findings"
+            echo "  - Secrets: Rotate any exposed credentials"
+            echo "  - Dependencies: Update or replace vulnerable packages"
+            exit 1
+          fi
+          echo "✅ Code security gate PASSED - Safe to merge"

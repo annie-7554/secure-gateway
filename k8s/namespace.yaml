@@ -1,4 +1,8 @@
+# Kubernetes namespace for isolation
+# SECURITY: Isolates resources and RBAC from other namespaces
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: production
+  name: devsecops-app
+  labels:
+    name: devsecops-app

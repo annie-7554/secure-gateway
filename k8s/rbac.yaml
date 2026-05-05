@@ -1,23 +1,45 @@
+# RBAC: Role and RoleBinding enforce least privilege
+# SECURITY: Service account can ONLY manage pods/deployments in this namespace
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: devsecops-app
+  namespace: devsecops-app
+
+---
+
+# Role: Define permissions (least privilege principle)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  namespace: production
-  name: deployer
+  name: devsecops-app
+  namespace: devsecops-app
 rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get","patch","update","create"]
+  # Can read pods (for self-identification)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Can update configmaps (for config, NOT for deployment control)
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  # Note: Cannot create, delete, or patch deployments
+  # This prevents container escape leading to deployment modification
+
 ---
+
+# RoleBinding: Attach role to service account
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: deployer-binding
-  namespace: production
-subjects:
-  - kind: User
-    name: deployer@example.com
-    apiGroup: rbac.authorization.k8s.io
+  name: devsecops-app
+  namespace: devsecops-app
 roleRef:
-  kind: Role
-  name: deployer
   apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: devsecops-app
+subjects:
+  - kind: ServiceAccount
+    name: devsecops-app
+    namespace: devsecops-app

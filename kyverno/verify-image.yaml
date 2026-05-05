@@ -1,0 +1,36 @@
+# Kyverno Policy: Verify container image signature
+# SECURITY: Only allow signed images in cluster (supply chain integrity)
+# Note: This policy is optional - implement only if using image signing
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signature
+spec:
+  # SECURITY: Fail if signature verification fails (fail-safe default)
+  validationFailureAction: enforce
+  
+  rules:
+    - name: verify-registry-signature
+      # Match pods in devsecops-app namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - devsecops-app
+      # Verify image signature using Cosign
+      verifyImages:
+        - imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/devsecops-app:*"
+            - "ghcr.io/*/devsecops-app:*"
+          # In real setup, reference public key from ConfigMap or secret
+          attestors:
+            - name: "cosign-key"
+              keySecret:
+                name: cosign-public-key
+                namespace: kyverno
+              signatureAlgorithm: sha256
+          # Audit mode for testing, change to enforce in production
+          messageOnFailure: "Image signature verification failed - unsigned images not allowed"

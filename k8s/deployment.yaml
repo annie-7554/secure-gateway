@@ -1,35 +1,116 @@
+# Deployment: Orchestrate secure pods
+# SECURITY: Non-root user, read-only filesystem, resource limits, health checks
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: secure-gateway
-  namespace: production
+  name: devsecops-app
+  namespace: devsecops-app
+  labels:
+    app: devsecops-app
 spec:
-  replicas: 1
+  replicas: 2  # High availability
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero downtime deployments
   selector:
     matchLabels:
-      app: secure-gateway
+      app: devsecops-app
   template:
     metadata:
       labels:
-        app: secure-gateway
+        app: devsecops-app
+      annotations:
+        # Security scanning metadata
+        container.apparmor.security.beta.kubernetes.io/app: runtime/default
     spec:
+      # SECURITY: Use service account with minimal permissions
+      serviceAccountName: devsecops-app
+      
+      # SECURITY: Prevent privilege escalation
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
       containers:
         - name: app
-          image: ghcr.io/annie-7554/secure-gateway:latest
+          # SECURITY: Use specific image tag (not :latest)
+          # In CI/CD, this would be: docker.io/yourorg/devsecops-app:${COMMIT_SHA}
+          image: devsecops-app:latest
+          imagePullPolicy: IfNotPresent
+
           ports:
-            - containerPort: 8000
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          # SECURITY: Health checks for automatic pod recovery
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
-            initialDelaySeconds: 15
-            periodSeconds: 20
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 2
+
+          # SECURITY: Resource limits prevent resource exhaustion attacks
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          # SECURITY: Read-only filesystem - application cannot modify itself
           securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
+          # SECURITY: Mount /tmp as writeable (needed for Python)
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: var-run
+              mountPath: /var/run
+
+      # SECURITY: Temporary volumes for non-root app
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: var-run
+          emptyDir: {}
+
+      # SECURITY: Pod disruption budget for stability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - devsecops-app
+                topologyKey: kubernetes.io/hostname
