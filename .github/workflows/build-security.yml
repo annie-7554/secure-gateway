@@ -70,3 +70,44 @@ jobs:
         run: |
           docker tag ghcr.io/${{ github.repository }}/secure-gateway:${{ github.sha }} ghcr.io/${{ github.repository }}/secure-gateway:latest
           docker push ghcr.io/${{ github.repository }}/secure-gateway:latest || true
+
+  ai-advisor:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -q anthropic
+      
+      - name: Download trivy SARIF
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-sarif
+          path: ./
+        continue-on-error: true
+      
+      - name: Run AI Security Advisor
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 scripts/analyze_findings.py \
+            --trivy-sarif trivy-scan/trivy-report.sarif \
+            --gate gate2 \
+            --output-summary advisor-summary.json
+        continue-on-error: true
+      
+      - name: Upload Advisor Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: advisor-summary
+          path: advisor-summary.json
+        if: always()
+        continue-on-error: true
