@@ -1,0 +1,134 @@
+.content {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: #475569;
+  background: #1e293b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0ea5e9;
+  margin: 0.5rem 0;
+}
+
+.stat-label {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.gate-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #1e293b;
+}
+
+.gate-info h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.gate-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pass {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.status-fail {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.status-pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.risk-high {
+  color: #ef4444;
+}
+
+.risk-moderate {
+  color: #f97316;
+}
+
+.risk-low {
+  color: #22c55e;
+}
+
+.pr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #334155;
+  background: #1e293b;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.pr-info h4 {
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.pr-meta {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.pr-stats {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.finding-badge {
+  background: #334155;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
