@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import LiveGateDashboard from './components/LiveGateDashboard'
 import Dashboard from './components/Dashboard'
 import './App.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('live')
   const [mockData, setMockData] = useState(null)
 
   useEffect(() => {
-    // Simulate loading data from API
+    // Mock data for demo tab
     const data = {
       gates: [
         {
@@ -77,36 +78,31 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <h1>🤖 Security Advisor Dashboard</h1>
-          <p>AI-Assisted DevSecOps Pipeline Monitoring</p>
+          <h1>🔒 Security Advisor Dashboard</h1>
+          <p>Live GitHub Actions Pipeline Monitoring</p>
         </div>
       </header>
 
       <nav className="tabs">
         <button 
-          className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
+          className={`tab ${activeTab === 'live' ? 'active' : ''}`}
+          onClick={() => setActiveTab('live')}
         >
-          Overview
+          🔴 Live Gates
         </button>
         <button 
-          className={`tab ${activeTab === 'gates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('gates')}
+          className={`tab ${activeTab === 'demo' ? 'active' : ''}`}
+          onClick={() => setActiveTab('demo')}
         >
-          Security Gates
-        </button>
-        <button 
-          className={`tab ${activeTab === 'prs' ? 'active' : ''}`}
-          onClick={() => setActiveTab('prs')}
-        >
-          Recent PRs
+          Demo Dashboard
         </button>
       </nav>
 
-      {mockData && (
+      {activeTab === 'live' && <LiveGateDashboard />}
+      {activeTab === 'demo' && mockData && (
         <Dashboard 
           data={mockData} 
-          activeTab={activeTab}
+          activeTab="overview"
         />
       )}
     </div>
