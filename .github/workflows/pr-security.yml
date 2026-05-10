@@ -49,7 +49,7 @@ jobs:
           semgrep --config .semgrep/rules.yml --sarif --output semgrep.sarif || rc=$?
           echo "SEMGRC=${rc:-0}" >> $GITHUB_ENV
       - name: Upload semgrep SARIF to GitHub code scanning
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
         if: always()
@@ -105,10 +105,11 @@ jobs:
             echo "Dependency-Check SARIF generated at dependency-check-scan/dependency-check.sarif"
           fi
       - name: Upload Dependency-Check SARIF to GitHub code scanning
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: dependency-check-scan/dependency-check.sarif
-        if: always()
+        if: always() && hashFiles('dependency-check-scan/dependency-check.sarif') != ''
+        continue-on-error: true
       - name: Upload dependency-check SARIF artifact
         uses: actions/upload-artifact@v4
         with:
@@ -131,8 +132,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: |
-          pip install -q anthropic
+        run: pip install -q -r requirements.txt
       
       - name: Download semgrep SARIF
         uses: actions/download-artifact@v4
