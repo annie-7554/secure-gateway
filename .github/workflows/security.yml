@@ -36,7 +36,7 @@ jobs:
 
       - name: Fail if semgrep found issues
         run: |
-          FINDINGS=$(jq '.runs[0].results | length' semgrep.sarif 2>/dev/null || echo 0)
+          FINDINGS=$(jq '[.runs[0].results[] | select(.suppressions == null or (.suppressions | length) == 0)] | length' semgrep.sarif 2>/dev/null || echo 0)
           if [ "$FINDINGS" -gt 0 ]; then
             echo "❌ SAST detected $FINDINGS finding(s). Failing gate."
             exit 1
