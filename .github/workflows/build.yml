@@ -44,7 +44,7 @@ jobs:
 
       # Upload Trivy findings to GitHub Security tab
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
@@ -61,7 +61,7 @@ jobs:
 
       # Upload SBOM as artifact for audit/compliance
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom
           path: sbom.spdx.json

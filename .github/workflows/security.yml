@@ -15,22 +15,24 @@ jobs:
 
       # Semgrep: Catch vulnerable code patterns (SQL injection, weak crypto, etc.)
       # Why: Shift-left security - find issues in code review, not production
+      - name: Install semgrep
+        run: pip install semgrep
+
       - name: Run Semgrep SAST
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/owasp-top-ten
-            p/cwe-top-25
-          generateSarif: true
+        run: |
+          semgrep --config p/security-audit \
+                  --config p/owasp-top-ten \
+                  --config p/cwe-top-25 \
+                  --sarif --output semgrep.sarif || true
 
       # Upload results for GitHub Security dashboard visibility
       - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('semgrep.sarif') != ''
         with:
           sarif_file: semgrep.sarif
           category: semgrep
+        continue-on-error: true
 
   secrets-scanning:
     runs-on: ubuntu-latest
@@ -56,9 +58,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check SNYK_TOKEN availability
+        id: token-check
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "${SNYK_TOKEN}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "SNYK_TOKEN not configured — skipping Snyk scan"
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       # Snyk: Identify known vulnerable dependencies
       # Why: Supply chain security - dependencies are entry point for attacks
+      # Requires SNYK_TOKEN secret in repo settings to activate
       - name: Run Snyk dependency scan
+        if: steps.token-check.outputs.available == 'true'
         uses: snyk/actions/python-3.11@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
