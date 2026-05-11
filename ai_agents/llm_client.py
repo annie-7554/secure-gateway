@@ -88,11 +88,12 @@ class LLMClient:
     
     def _call_openai(self, prompt: str, system_prompt: str) -> str:
         """Call OpenAI GPT API."""
+        system = system_prompt or "You are a security expert helping developers understand and fix vulnerabilities."
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=1024,
-            system=system_prompt or "You are a security expert helping developers understand and fix vulnerabilities.",
             messages=[
+                {"role": "system", "content": system},
                 {"role": "user", "content": prompt}
             ]
         )

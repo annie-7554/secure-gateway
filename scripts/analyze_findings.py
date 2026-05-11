@@ -7,6 +7,7 @@ and post PR comments or workflow summaries.
 """
 
 import json
+import os
 import sys
 import argparse
 import logging
@@ -164,10 +165,11 @@ def main():
     if args.output_comment and args.pr_number:
         with open(args.output_comment) as f:
             comment_text = f.read()
-        
-        # Escape for GitHub output
-        comment_escaped = comment_text.replace("%", "%25").replace("\n", "%0A").replace("\r", "%0D")
-        print(f"::set-output name=pr-comment::{comment_escaped}")
+
+        github_output = os.environ.get("GITHUB_OUTPUT")
+        if github_output:
+            with open(github_output, "a") as gho:
+                gho.write(f"pr-comment<<EOF\n{comment_text}\nEOF\n")
 
 
 if __name__ == "__main__":

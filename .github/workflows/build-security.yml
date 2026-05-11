@@ -84,8 +84,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: |
-          pip install -q anthropic
+        run: pip install -q -r requirements.txt
       
       - name: Download trivy SARIF
         uses: actions/download-artifact@v4
