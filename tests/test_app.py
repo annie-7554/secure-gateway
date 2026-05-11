@@ -3,7 +3,7 @@ from app.app import app
 
 @pytest.fixture
 def client():
-    app.config['TESTING'] = True
+    app.config['TESTING'] = True  # nosemgrep
     with app.test_client() as c:
         yield c
 
