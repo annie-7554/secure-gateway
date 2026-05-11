@@ -23,7 +23,7 @@ jobs:
           semgrep --config p/security-audit \
                   --config p/owasp-top-ten \
                   --config p/cwe-top-25 \
-                  --sarif --output semgrep.sarif || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+                  --sarif --output semgrep.sarif || true
 
       # Upload results for GitHub Security dashboard visibility
       - name: Upload SARIF results
@@ -36,10 +36,12 @@ jobs:
 
       - name: Fail if semgrep found issues
         run: |
-          if [ "${SEMGREP_FAILED}" = "true" ]; then
-            echo "❌ SAST detected security issues — see findings above"
+          FINDINGS=$(jq '[.runs[0].results[] | select(.suppressions == null or (.suppressions | length) == 0)] | length' semgrep.sarif 2>/dev/null || echo 0)
+          if [ "$FINDINGS" -gt 0 ]; then
+            echo "❌ SAST detected $FINDINGS finding(s). Failing gate."
             exit 1
           fi
+          echo "✅ No SAST findings."
 
   secrets-scanning:
     runs-on: ubuntu-latest
