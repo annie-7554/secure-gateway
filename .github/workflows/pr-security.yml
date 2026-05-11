@@ -161,10 +161,27 @@ jobs:
           script: |
             const fs = require('fs');
             const comment = fs.readFileSync('pr-comment.md', 'utf8');
-            github.rest.issues.createComment({
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
             });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('🤖 **Security Advisory**')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
         continue-on-error: true
