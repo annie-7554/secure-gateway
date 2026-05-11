@@ -5,7 +5,7 @@ rules:
     severity: ERROR
     patterns:
       - pattern: $DB.execute($QUERY)
-      - pattern-not: $DB.execute($QUERY, ...)
+      - pattern-not: $DB.execute($QUERY, $PARAMS)
 
   - id: py-eval-exec
     languages: [python]
