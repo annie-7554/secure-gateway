@@ -49,6 +49,12 @@ rules:
     severity: ERROR
     pattern: eval($X)
 
+  - id: py-unsafe-yaml-load
+    languages: [python]
+    message: "yaml.load() without a safe Loader allows arbitrary code execution. Use yaml.safe_load() instead."
+    severity: ERROR
+    pattern: yaml.load($DATA)
+
   - id: risky-templates
     languages: [python]
     message: "Passing raw user input into template rendering can lead to XSS; sanitize or escape before rendering."
