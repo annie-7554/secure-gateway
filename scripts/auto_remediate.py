@@ -145,20 +145,16 @@ def post_incident_alert(finding: dict, pr_number: int) -> None:
     # Slack notification (no-op if webhook not configured)
     webhook = os.environ.get("SLACK_WEBHOOK_URL")
     if webhook:
-        import urllib.request
-        payload = json.dumps({
+        import requests
+        payload = {
             "text": (
                 f":rotating_light: *Secret exposure detected* in PR #{pr_number}\n"
                 f"Rule: `{alert['rule']}` | File: `{alert['file']}`\n"
                 "Immediate credential rotation required."
             )
-        }).encode()
+        }
         try:
-            req = urllib.request.Request(
-                webhook, data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            urllib.request.urlopen(req, timeout=5)
+            requests.post(webhook, json=payload, timeout=5)
         except Exception as e:
             print(f"Warning: Slack notification failed: {e}")
 
