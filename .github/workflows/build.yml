@@ -1,15 +1,21 @@
 name: Gate 2 - Build & Container Security
 
-# Trigger on merge to main (after Gate 1 passes)
+# Only run after Gate 1 passes — enforces sequential gate ordering
 on:
-  push:
+  workflow_run:
+    workflows: ["Gate 1 - Code Security"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+
+# Skip if Gate 1 failed (workflow_run events only; workflow_dispatch always runs)
+
 
 jobs:
   build-and-scan:
     runs-on: ubuntu-latest
     name: Build & Container Security
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       security-events: write  # For uploading SARIF
