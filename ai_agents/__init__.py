@@ -7,7 +7,7 @@ anything. Deterministic security gates remain authoritative.
 from .security_advisor import SecurityAdvisor, create_advisor
 from .findings_parser import FindingsParser, Finding
 from .llm_client import LLMClient
-from .confidence_engine import Confidence, classify, RULE_PROFILES
+from .confidence_engine import Action, get_policy, POLICY_STATEMENT
 
 __all__ = [
     "SecurityAdvisor",
@@ -15,7 +15,7 @@ __all__ = [
     "FindingsParser",
     "Finding",
     "LLMClient",
-    "Confidence",
-    "classify",
-    "RULE_PROFILES",
+    "Action",
+    "get_policy",
+    "POLICY_STATEMENT",
 ]

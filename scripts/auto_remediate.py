@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ai_agents.confidence_engine import Confidence, classify
+from ai_agents.confidence_engine import Action, get_policy, POLICY_STATEMENT
 
 
 # ── Deterministic code fixers ────────────────────────────────────────────────
@@ -273,15 +273,15 @@ def main():
                                 .get("uri", "") if locations else "")
         file_path = Path(args.repo_root) / file_uri if file_uri else None
 
-        profile = classify(rule_id, severity)
+        policy = get_policy(rule_id, severity)
 
-        if profile.requires_incident:
+        if policy.requires_incident:
             incident_required = True
             post_incident_alert(finding, args.pr_number)
 
-        print(f"  [{profile.confidence}] {rule_id} in {file_uri or 'unknown'}")
+        print(f"  [{policy.action}] {rule_id} in {file_uri or 'unknown'}")
 
-        if profile.confidence == Confidence.HIGH and file_path and file_path.exists():
+        if policy.action == Action.AUTO_FIX and file_path and file_path.exists():
             fixer = FIXERS.get(rule_id)
             match_text = finding.get("message", {}).get("text", "")
             if fixer:
@@ -291,22 +291,22 @@ def main():
                 else:
                     applied = True  # dry-run: pretend it worked
                 if applied:
-                    desc = f"{rule_id}: {profile.auto_fix} in `{file_uri}`"
+                    desc = f"{rule_id}: {policy.fix_description} in `{file_uri}`"
                     auto_fixes_applied.append(desc)
-                    print(f"    ✅ Auto-fix applied: {profile.auto_fix}")
+                    print(f"    ✅ Auto-fix applied: {policy.fix_description}")
                 else:
-                    escalations.append((rule_id, file_uri, profile.suggestion,
+                    escalations.append((rule_id, file_uri, policy.guidance,
                                         "Auto-fix pattern did not match — manual review needed"))
             else:
-                escalations.append((rule_id, file_uri, profile.suggestion,
+                escalations.append((rule_id, file_uri, policy.guidance,
                                     "No fixer registered for this rule"))
 
-        elif profile.confidence == Confidence.MEDIUM:
-            suggestions.append((rule_id, file_uri, profile.suggestion))
+        elif policy.action == Action.SUGGEST:
+            suggestions.append((rule_id, file_uri, policy.guidance))
             print(f"    💡 Suggestion posted")
 
-        else:  # LOW
-            escalations.append((rule_id, file_uri, profile.suggestion,
+        else:  # ESCALATE
+            escalations.append((rule_id, file_uri, policy.guidance,
                                  "Context-sensitive fix — requires human review"))
             print(f"    🚨 Escalated to human")
 
