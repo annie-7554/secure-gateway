@@ -1,0 +1,174 @@
+name: Auto Remediation
+
+# Triggers after Gate 1 Code Security completes on a PR.
+# Only acts when Gate 1 FAILED — clean PRs are never touched.
+on:
+  workflow_run:
+    workflows: ["Gate 1 - Code Security"]
+    types: [completed]
+
+permissions:
+  contents: write       # create branches + commits
+  pull-requests: write  # open PRs + post comments
+  security-events: read # read SARIF findings
+
+jobs:
+  triage:
+    name: Triage & Remediate
+    runs-on: ubuntu-latest
+    # Only run when Gate 1 failed on a PR (not a direct push to main)
+    if: |
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt semgrep pytest
+
+      # Download the SARIF from the failed Gate 1 run
+      - name: Download Gate 1 SARIF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: semgrep-sarif
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: ./
+        continue-on-error: true
+
+      # ── Core remediation engine ────────────────────────────────────────────
+      # Confidence tiers:
+      #   HIGH   → deterministic fix applied → validated → auto-PR (draft, needs approval)
+      #   MEDIUM → inline suggestion posted on PR, no code change
+      #   LOW    → human escalation comment with detailed guidance
+      - name: Run auto-remediation engine
+        id: remediate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          python3 scripts/auto_remediate.py \
+            --sarif semgrep.sarif \
+            --pr-number ${{ github.event.workflow_run.pull_requests[0].number }} \
+            --base-branch ${{ github.event.workflow_run.pull_requests[0].base.ref || 'main' }} \
+            --repo-root .
+        continue-on-error: true
+
+      # ── Post remediation report to the original PR ─────────────────────────
+      - name: Build remediation comment
+        if: hashFiles('remediation-summary.json') != ''
+        id: build-comment
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+
+          data = json.loads(open("remediation-summary.json").read())
+          auto  = data.get("auto_fixed", [])
+          sugg  = data.get("suggestions", [])
+          esc   = data.get("escalations", [])
+          inc   = data.get("incident_triggered", False)
+
+          lines = ["## 🔧 Auto-Remediation Report\n"]
+
+          if inc:
+              lines.append(
+                  "> ⚠️ **Security Incident:** Secret exposure detected. "
+                  "Credential rotation required immediately. "
+                  "Incident logged and security team notified.\n"
+              )
+
+          # HIGH confidence auto-fixes
+          if auto:
+              lines.append(f"### ✅ Auto-fixed ({len(auto)} — HIGH confidence)")
+              lines.append("A draft PR has been opened with these fixes applied and validated:\n")
+              for f in auto:
+                  lines.append(f"- {f}")
+              lines.append("\n> **Validation passed:** unit tests ✅ · semgrep rescan ✅ · syntax check ✅")
+              lines.append("> The auto-fix PR still requires **developer approval** before merging.\n")
+          else:
+              lines.append("### ✅ Auto-fix\nNo high-confidence deterministic fixes were applicable.\n")
+
+          # MEDIUM confidence suggestions
+          if sugg:
+              lines.append(f"### 💡 Suggestions ({len(sugg)} — MEDIUM confidence)")
+              lines.append("These require developer judgment to apply safely:\n")
+              for s in sugg:
+                  lines.append(f"- **`{s['rule']}`** in `{s['file']}`")
+                  lines.append(f"  {s['suggestion']}\n")
+
+          # LOW confidence escalations
+          if esc:
+              lines.append(f"### 🚨 Human Review Required ({len(esc)} — LOW confidence)")
+              lines.append("These findings are context-sensitive and cannot be auto-fixed:\n")
+              for e in esc:
+                  lines.append(f"- **`{e['rule']}`** in `{e['file']}`")
+                  lines.append(f"  _{e['reason']}_")
+                  lines.append(f"  **Guidance:** {e['guidance']}\n")
+
+          lines.append("---")
+          lines.append(
+              "*Auto-remediation intentionally separates deterministic fixes "
+              "from context-sensitive issues. All automated fixes are validated "
+              "before a PR is opened. Human approval is always required before merge.*"
+          )
+
+          comment = "\n".join(lines)
+          with open("remediation-comment.md", "w") as f:
+              f.write(comment)
+          print("Comment written.")
+          PYEOF
+
+      - name: Post or update remediation comment
+        if: hashFiles('remediation-comment.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('remediation-comment.md', 'utf8');
+            const prNumber = context.payload.workflow_run.pull_requests[0]?.number;
+            if (!prNumber) { console.log('No PR number found'); return; }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('🔧 Auto-Remediation Report')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment,
+              });
+            }
+
+      - name: Upload remediation summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: remediation-summary
+          path: remediation-summary.json
+        continue-on-error: true
