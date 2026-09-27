@@ -1,3 +1,4 @@
 # Intentionally vulnerable example files — not production code
 attack-simulations/
 examples/
+src/

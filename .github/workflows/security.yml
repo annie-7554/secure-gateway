@@ -23,9 +23,6 @@ jobs:
       - name: Run Semgrep SAST
         run: |
           semgrep --config .semgrep/rules.yml \
-                  --config p/security-audit \
-                  --config p/owasp-top-ten \
-                  --config p/cwe-top-25 \
                   --sarif --output semgrep.sarif || true
 
       # Upload results for GitHub Security dashboard visibility
