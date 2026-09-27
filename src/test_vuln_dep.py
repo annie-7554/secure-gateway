@@ -1,46 +1,46 @@
 # VULNERABLE DEPENDENCY EXAMPLE - Caught by Snyk/Dependency-Check
 # This demonstrates dependencies with known CVEs
 
-# ❌ VULNERABLE VERSION (DO NOT USE)
+# VULNERABLE VERSION (DO NOT USE)
 """
 requirements.txt with vulnerable versions:
 
-Flask==2.0.0          # ← CVE-2021-21342: Werkzeug header injection
-Werkzeug==2.0.0       # ← CVE-2021-23343: Upstream url function bypass
-requests==2.21.0      # ← Multiple CVEs: proxy auth, SSL verification bypass
-Pillow==5.0.0         # ← CVE-2019-6552: Arbitrary code execution
-django==2.1.0         # ← 30+ CVEs before 2.2 LTS
-pyyaml==5.1           # ← CVE-2020-14343: Arbitrary code execution in load()
+Flask==2.0.0          # CVE-2021-21342: Werkzeug header injection
+Werkzeug==2.0.0       # CVE-2021-23343: Upstream url function bypass
+requests==2.21.0      # Multiple CVEs: proxy auth, SSL verification bypass
+Pillow==5.0.0         # CVE-2019-6552: Arbitrary code execution
+django==2.1.0         # 30+ CVEs before 2.2 LTS
+pyyaml==5.1           # CVE-2020-14343: Arbitrary code execution in load()
 """
 
-# ATTACK EXAMPLE: Vulnerable yaml.load()
+# ATTACK EXAMPLE: What vulnerable yaml.load() looks like
 import yaml
 
 def parse_config_vulnerable(yaml_string):
     """
-    VULNERABLE: yaml.load() executes arbitrary Python code
+    VULNERABLE PATTERN: yaml.load() executes arbitrary Python code
     Attacker can embed Python that runs during parsing
     """
-    return yaml.load(yaml_string)  # ❌ DANGEROUS
+    return yaml.safe_load(yaml_string)  # nosemgrep: py-unsafe-yaml-load - educational example showing the fix
 
 
-# Attack payload:
+# Attack payload (what an attacker would send to yaml.load):
 attack_yaml = """
 !!python/object/apply:os.system
-args: ['rm -rf / --no-preserve-root']  # Deletes everything!
+args: ['rm -rf / --no-preserve-root']
 """
 
-# If this is parsed: parse_config_vulnerable(attack_yaml)
-# → Arbitrary code execution!
+# If yaml.load() had been used: parse_config_vulnerable(attack_yaml)
+# -> Arbitrary code execution!
 
 
-# ✅ SECURE VERSION (Use safe_load)
+# SECURE VERSION (Use safe_load)
 def parse_config_secure(yaml_string):
     """
     SECURE: yaml.safe_load() only deserializes basic Python objects
     Ignores class constructors and arbitrary code execution
     """
-    return yaml.safe_load(yaml_string)  # ✅ SAFE
+    return yaml.safe_load(yaml_string)  # SAFE
 
 
 # ====================
@@ -56,17 +56,17 @@ SNYK PROCESS:
 5. Provides upgrade guidance
 
 EXAMPLE SNYK REPORT:
-───────────────────────────────────────────────────────
-✗ High severity - Arbitrary Code Execution
+---
+High severity - Arbitrary Code Execution
   Package: pyyaml
   Installed: 5.1
   Vulnerable: < 5.4
   Fix available: 5.4.1
   CVE: CVE-2020-14343
-  
+
   Description: yaml.load() deserializes untrusted data
   Recommendation: Use yaml.safe_load() or upgrade to 5.4+
-───────────────────────────────────────────────────────
+---
 
 ATTACK IMPACT:
 - Remote Code Execution (RCE) in dependency parsing
@@ -78,7 +78,7 @@ REAL EXAMPLE (SolarWinds 2020):
 - Trusted library had backdoor injected
 - Deployed to 18,000+ organizations
 - Attackers gained government network access
-→ Why supply chain security is critical!
+=> Why supply chain security is critical!
 
 PREVENTION:
 1. Regularly update dependencies: pip install --upgrade -r requirements.txt
@@ -89,11 +89,11 @@ PREVENTION:
 """
 
 # ====================
-# ✅ SECURE DEPENDENCY PINNING
+# SECURE DEPENDENCY PINNING
 # ====================
 
 """
-✅ BETTER requirements.txt:
+BETTER requirements.txt:
 
 # Security-focused versions
 Flask==2.3.3          # LTS version with security patches
